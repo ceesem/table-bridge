@@ -109,9 +109,11 @@ class SheetProcessor:
         )
         return r
 
-    def set_value_series(self, s):
+    def set_value_series(self, s, column_name=None):
+        if column_name is None:
+            column_name = s.name
         rows = s.index.values
-        columns = [self.column_mapping[s.name]] * len(rows)
+        columns = [self.column_mapping[column_name]] * len(rows)
         values = s.values
         self.set_values(rows, columns, values)
 
