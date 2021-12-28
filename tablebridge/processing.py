@@ -4,6 +4,7 @@ import numpy as np
 import os
 from .utils import number_to_column, column_to_number
 from .auth import get_credentials, HttpError
+from .validation import no_validation
 from googleapiclient.discovery import build
 
 SCOPES = ["https://www.googleapis.com/auth/spreadsheets"]  # read+write scope
@@ -24,12 +25,17 @@ class SheetProcessor:
         secrets_file=None,
     ):
         self._service = sheet_service(token_file, secrets_file)
-        if validation_map is None:
-            validation_map = {}
-        self._validation_map = validation_map
         self._sheet_name = sheet_name
         self._sheet_id = sheet_id
         self._column_names = column_names
+
+        if validation_map is None:
+            validation_map = {}
+        self._validation_map = {
+            c: no_validation for c in self._column_names if c not in validation_map
+        }
+        self._validation_map.update(validation_map)
+
         self._column_mapping = None
         self._first_row = first_row
         self._first_column = first_column

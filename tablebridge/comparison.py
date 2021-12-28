@@ -62,20 +62,40 @@ def convert_dataframe(df, schema):
     """
     rename_schema = {}
     apply_schema = {}
-    cols_out = []
+    cols_out = [k for k in schema.keys()]
 
     df = df.copy()
+    schema = schema.copy()
+
+    # Convert any column names already in table to a unique name and make a look-up fix.
+    temp_rename = {}
+    to_update = {}
+    to_remove = []
+
+    for k, v in schema.items():
+        if k in df.columns:
+            ii = 0
+            while f"{k}_{ii}" in df.columns:
+                ii += 1
+            new_name = f"{k}_{ii}"
+            temp_rename[new_name] = k
+            to_update[new_name] = schema[k]
+            to_remove.append(k)
+        else:
+            continue
+    for k in to_remove:
+        schema.pop(k)
+    schema.update(to_update)
+
     for k, v in schema.items():
         if isinstance(v, str):
             rename_schema[v] = k
-            cols_out.append(k)
         else:
             apply_schema[k] = v
-            cols_out.append(k)
     for column, generator in apply_schema.items():
         df[column] = df.apply(generator, axis=1)
     df = df.rename(columns=rename_schema)
-    return df[cols_out]
+    return df.rename(columns=temp_rename)[cols_out]
 
 
 class AnnotationComparison:
