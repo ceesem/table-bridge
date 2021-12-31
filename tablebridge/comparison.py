@@ -2,16 +2,18 @@ import pandas as pd
 import numpy as np
 from .utils import row_differs
 
+__all__ = ["fill_column_from_above", "convert_dataframe", "AnnotationComparison"]
 
-def fill_column_from_above(df, column, starting_value=None, inplace=False):
+
+def fill_column_from_above(df, columns, starting_value=None, inplace=False):
     """Fill in a column in order with the last non-NAN value
 
     Parameters
     ----------
     df : pd.DataFrame
         Dataframe to act on
-    column : str
-        Column name
+    columns : str or list
+        Column name or list of column names
     starting_value : object
         Initial value to use if there is none.
     inplace : bool, optional
@@ -25,18 +27,22 @@ def fill_column_from_above(df, column, starting_value=None, inplace=False):
     if inplace:
         df = df.copy()
 
-    last_value = df[column].iloc[0]
-    if pd.isna(last_value):
-        if not starting_value:
-            last_value = pd.NA
-        else:
-            last_value = starting_value
+    if isinstance(columns, str):
+        columns = [columns]
 
-    for idx, val in df[column].iteritems():
-        if pd.isna(val):
-            df.at[idx, column] = last_value
-        else:
-            last_value = val
+    for column in columns:
+        last_value = df[column].iloc[0]
+        if np.any(pd.isna(last_value)):
+            if not starting_value:
+                last_value = pd.NA
+            else:
+                last_value = starting_value
+
+        for idx, val in df[column].iteritems():
+            if np.any(pd.isna(val)):
+                df.at[idx, column] = last_value
+            else:
+                last_value = val
     return df
 
 

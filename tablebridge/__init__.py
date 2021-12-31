@@ -1,4 +1,4 @@
-from .comparison import AnnotationComparison
+from .comparison import *
 from .processing import *
 from . import validation
 

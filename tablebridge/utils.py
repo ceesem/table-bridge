@@ -7,7 +7,7 @@ def row_differs(row, data_columns_a, data_columns_b):
     for dca, dcb in zip(data_columns_a, data_columns_b):
         if np.all(pd.isna(row[[dca, dcb]])):
             continue
-        if row[dca] != row[dcb]:
+        if np.any(row[dca] != row[dcb]):
             return True
     return False
 

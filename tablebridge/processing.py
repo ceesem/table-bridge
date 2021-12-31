@@ -1,10 +1,9 @@
 import re
 import pandas as pd
 import numpy as np
-import os
 from .utils import number_to_column, column_to_number
 from .auth import get_credentials, HttpError
-from .validation import no_validation
+from .validation import no_validation, process_column
 from googleapiclient.discovery import build
 
 SCOPES = ["https://www.googleapis.com/auth/spreadsheets"]  # read+write scope
@@ -67,7 +66,7 @@ class SheetProcessor:
     def data(self):
         if self._data is None:
             self.update_data()
-        return self._data
+        return self._data.copy()
 
     def update_data(self):
         df = self._get_data()
@@ -104,6 +103,7 @@ class SheetProcessor:
         return process_records(data["values"], self.column_names, self._validation_map)
 
     def set_values(self, rows, columns, values):
+        values = process_column(values)
         r = update_cells(
             rows, columns, values, self._service, self._sheet_id, self._sheet_name
         )
@@ -119,6 +119,8 @@ class SheetProcessor:
 
     def append_data(self, data, add_blank_rows=False):
         """Assume data is same column form as downloaded data"""
+        for col in data.columns:
+            data[col] = process_column(data[col])
         data_ready = data.fillna("").values
         return append_cells(
             data_ready,
