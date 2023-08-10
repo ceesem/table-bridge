@@ -46,7 +46,7 @@ def fill_column_from_above(df, columns, starting_value=None, inplace=False):
             else:
                 last_value = starting_value
 
-        for idx, val in df[column].iteritems():
+        for idx, val in df[column].items():
             if np.any(pd.isna(val)):
                 df.at[idx, column] = last_value
             else:
