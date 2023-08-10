@@ -22,8 +22,10 @@ class SheetProcessor:
         sheet_name=None,
         validation_map=None,
         secrets_file=None,
+        api_key=None,
     ):
         self._service = sheet_service(token_file, secrets_file)
+        self._key = api_key
         self._sheet_name = sheet_name
         self._sheet_id = sheet_id
         self._column_names = column_names
@@ -96,16 +98,29 @@ class SheetProcessor:
             sheet_name = self.sheet_name
 
         range_str = set_range(rows, columns, sheet_name)
-        return get_sheet_raw(self._service, self._sheet_id, range=range_str)
+        return get_sheet_raw(
+            self._service, self._sheet_id, range=range_str, key=self._key
+        )
 
     def _get_data_range(self, rows, columns, sheet_name=None):
         data = self._get_data_range_raw(rows, columns, sheet_name)
-        return process_records(data["values"], self.column_names, self._validation_map)
+        if data is None:
+            return process_records([], self.column_names, self._validation_map)
+        else:
+            return process_records(
+                data.get("values", []), self.column_names, self._validation_map
+            )
 
     def set_values(self, rows, columns, values):
         values = process_column(values)
         r = update_cells(
-            rows, columns, values, self._service, self._sheet_id, self._sheet_name
+            rows,
+            columns,
+            values,
+            self._service,
+            self._sheet_id,
+            self._sheet_name,
+            self._key,
         )
         return r
 
@@ -137,12 +152,15 @@ def sheet_service(token_file, secrets_file):
     return service
 
 
-def get_sheet_raw(service, sheet_id, range):
+def get_sheet_raw(service, sheet_id, range, key=None):
     sheet = service.spreadsheets()
     try:
-        sheet_data = sheet.values().get(spreadsheetId=sheet_id, range=range).execute()
+        sheet_data = (
+            sheet.values().get(spreadsheetId=sheet_id, range=range, key=key).execute()
+        )
     except HttpError as err:
         print(err)
+        sheet_data = None
     return sheet_data
 
 
@@ -162,29 +180,29 @@ def _package_batch_update(rows, columns, values, sheet_name=None):
     return body
 
 
-def update_cells(rows, columns, values, service, sheet_id, sheet_name=None):
+def update_cells(rows, columns, values, service, sheet_id, sheet_name=None, key=None):
     sheet = service.spreadsheets()
     body = _package_batch_update(rows, columns, values, sheet_name)
     try:
-        sheet.values().batchUpdate(spreadsheetId=sheet_id, body=body).execute()
+        sheet.values().batchUpdate(spreadsheetId=sheet_id, body=body, key=key).execute()
     except HttpError as err:
         print(err)
 
 
 def _package_append_data(data, add_blank_rows):
     values = []
-    for row in data:
+    for ii, row in enumerate(data):
         if add_blank_rows:
-            values.append(["" for x in row])
+            values.append(["---" for x in row])
         values.append([str(x) for x in row])
+
     body = {"values": values}
     return body
 
 
-def append_cells(data, range, service, sheet_id, add_blank_rows=False):
+def append_cells(data, range, service, sheet_id, add_blank_rows=False, key=None):
     sheet = service.spreadsheets()
     body = _package_append_data(data, add_blank_rows)
-
     try:
         sheet.values().append(
             spreadsheetId=sheet_id,
@@ -192,6 +210,7 @@ def append_cells(data, range, service, sheet_id, add_blank_rows=False):
             valueInputOption="USER_ENTERED",
             insertDataOption="INSERT_ROWS",
             body=body,
+            key=key,
         ).execute()
     except HttpError as err:
         print(err)
